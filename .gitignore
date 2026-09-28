@@ -6,3 +6,8 @@ assets/src/
 assets/_old/
 *.bak
 assets/audio/src/
+참외톡톡_앱파일/
+*.keystore
+*.aab
+*.apk
+signing-key-info.txt
