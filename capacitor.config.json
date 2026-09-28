@@ -1,0 +1,12 @@
+{
+  "appId": "com.chohohyeon.chamoetok",
+  "appName": "참외톡톡",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#7ec4ec",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#7ec4ec", "showSpinner": false },
+    "StatusBar": { "style": "LIGHT", "backgroundColor": "#4a90c9" }
+  }
+}

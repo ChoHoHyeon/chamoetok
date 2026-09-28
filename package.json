@@ -1,0 +1,19 @@
+{
+  "name": "chamoetok",
+  "version": "0.1.0",
+  "private": true,
+  "description": "참외톡톡 - 달성군 특산물 낙하 퍼즐",
+  "scripts": {
+    "sync": "node build-www.js && npx cap sync",
+    "android": "node build-www.js && npx cap sync android && npx cap open android",
+    "serve": "npx serve -l 8080 ."
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "serve": "^14.2.0"
+  }
+}
