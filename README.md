@@ -25,3 +25,9 @@
 ## IP 원칙
 - 규칙(4개 연결 소멸·연쇄·방해블록)은 보호 대상 아님. 이름/캐릭터/음악/UI 연출은 전부 자체 제작
 - 스토어 설명에 타사 게임명 언급 금지
+
+## 앱 파일 (PWABuilder, 2026-09-28)
+- Downloads\참외톡톡_앱파일\ : 참외톡톡.aab(스토어 업로드용), 참외톡톡.apk(폰 직접 설치용), signing.keystore + signing-key-info.txt(서명키·비밀번호 — 절대 분실 금지, 백업 필수)
+- .well-known/assetlinks.json : 앱↔사이트 연결 파일 (Play 앱 서명 사용 시 Console의 SHA-256 지문을 여기에 추가해야 함)
+- .nojekyll : GitHub Pages가 .well-known 폴더를 무시하지 않게 하는 파일 (삭제 금지)
+- Package ID: com.chohohyeon.chamoetok / version 1.0.0.0 (code 1)
