@@ -35,6 +35,7 @@
   .hud .name{font-weight:800;font-size:12px;color:#5b5f7a;white-space:nowrap}
   .hud .score{font-weight:900;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.5px}
   .hud .sub{font-size:11px;color:#6b7280;white-space:nowrap}
+  .player.mini .hud{padding:4px 6px}.player.mini .hud .score{font-size:13px}.player.mini .hud .name{font-size:10px}.player.mini .hud .sub{font-size:9px}
   .hud canvas{border-radius:10px}
   .boardwrap{position:relative}
   canvas.board{display:block;border-radius:16px;box-shadow:0 14px 34px rgba(0,0,0,.28), inset 0 0 0 3px rgba(255,255,255,.75);background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(240,247,255,.84));backdrop-filter:blur(8px)}
@@ -97,6 +98,7 @@
   <header>
     <div class="logo">참외<b>톡톡</b></div>
     <div class="btns">
+      <button class="icon-btn" id="btnHelp" title="게임 방법" style="font-weight:900">?</button>
       <button class="icon-btn" id="btnSpeed" title="속도" style="font-weight:900;font-size:13px">1×</button>
       <button class="icon-btn" id="btnMusic" title="음악">🎵</button>
       <button class="icon-btn" id="btnSound" title="소리">🔊</button>
@@ -136,8 +138,8 @@
 <script>
 'use strict';
 /* =====================================================================
-   참외톡톡 — 달성군 특산물 낙하 퍼즐 (오리지널 게임)
-   같은 특산물 4개 이상을 붙이면 톡! 연쇄로 상대에게 바위를 보낸다.
+   참외톡톡 — 과일 낙하 퍼즐 (오리지널 게임)
+   같은 과일 4개 이상을 붙이면 톡! 연쇄로 상대에게 바위를 보낸다.
    ===================================================================== */
 
 // ---------- 상수 ----------
@@ -300,19 +302,22 @@ const Sound={
     const s=this.ctx.createBufferSource(), g=this.ctx.createGain(), f=this.ctx.createBiquadFilter();
     f.type='lowpass'; f.frequency.value=900; s.buffer=buf; g.gain.value=gain; s.connect(f); f.connect(g); g.connect(this.ctx.destination); s.start(t);
   },
-  move(){ this.tone(620,0.04,'triangle',0.035); },
-  rotate(){ this.tone(760,0.06,'triangle',0.06,240); },
-  land(){ this.tone(200,0.07,'sine',0.07,-90); this.noise(0.05,0.03); },
-  drop(){ this.tone(160,0.09,'square',0.05,-70); this.noise(0.08,0.05); },
-  pop(chain){ const b=440*Math.pow(1.122,Math.min(chain-1,14));
+  move(){ if(AudioFiles.sfx('move',0.5)) return; this.tone(620,0.04,'triangle',0.035); },
+  rotate(){ if(AudioFiles.sfx('rotate',0.6)) return; this.tone(760,0.06,'triangle',0.06,240); },
+  land(){ if(AudioFiles.sfx('land',0.7)) return; this.tone(200,0.07,'sine',0.07,-90); this.noise(0.05,0.03); },
+  drop(){ if(AudioFiles.sfx('drop',0.7)) return; this.tone(160,0.09,'square',0.05,-70); this.noise(0.08,0.05); },
+  pop(chain){ const n='pop'+Math.min(chain,5); if(AudioFiles.sfx(n,1,chain>5?1+Math.min(0.3,(chain-5)*0.06):1)) return;
+    const b=440*Math.pow(1.122,Math.min(chain-1,14));
     this.tone(b,0.16,'sine',0.14,b*0.5); this.tone(b*1.5,0.16,'triangle',0.08,0,0.05); this.tone(b*2,0.2,'sine',0.05,0,0.1);
     if(chain>=3) this.tone(b*3,0.3,'sine',0.05,-b,0.12); },
-  garbage(){ this.tone(110,0.28,'sawtooth',0.07,-50); this.noise(0.2,0.08); },
-  over(){ [440,370,311,262].forEach((f,i)=>this.tone(f,0.3,'triangle',0.1,0,i*0.16)); },
-  win(){ [523,659,784,1046,1318].forEach((f,i)=>this.tone(f,0.28,'triangle',0.1,0,i*0.11)); },
-  ui(){ this.tone(880,0.07,'triangle',0.06,300); },
-  count(){ this.tone(660,0.12,'triangle',0.08); },
-  go(){ this.tone(880,0.25,'triangle',0.1,400); },
+  garbage(){ if(AudioFiles.sfx('garbage',0.9)) return; this.tone(110,0.28,'sawtooth',0.07,-50); this.noise(0.2,0.08); },
+  rockbreak(){ AudioFiles.sfx('rockbreak',0.8); },
+  warn(){ AudioFiles.sfx('warn',0.6); },
+  over(){ if(AudioFiles.sfx('lose',0.9)) return; [440,370,311,262].forEach((f,i)=>this.tone(f,0.3,'triangle',0.1,0,i*0.16)); },
+  win(){ if(AudioFiles.sfx('win',0.9)) return; [523,659,784,1046,1318].forEach((f,i)=>this.tone(f,0.28,'triangle',0.1,0,i*0.11)); },
+  ui(){ if(AudioFiles.sfx('ui',0.6)) return; this.tone(880,0.07,'triangle',0.06,300); },
+  count(){ if(AudioFiles.sfx('count',0.8)) return; this.tone(660,0.12,'triangle',0.08); },
+  go(){ if(AudioFiles.sfx('go',0.9)) return; this.tone(880,0.25,'triangle',0.1,400); },
 };
 // ---------- BGM (WebAudio 절차 생성, 파일 없음) ----------
 const Music={
@@ -323,7 +328,7 @@ const Music={
   bass:[-24,null,-24,null,-17,null,-17,null,-19,null,-19,null,-15,null,-15,null],
   chords:[[0,4,7],[0,4,7],[5,9,12],[5,9,12],[7,11,14],[7,11,14],[0,4,7],[0,4,7]],
   f(n){ return 523.25*Math.pow(2,n/12); },
-  start(){ if(!Sound.ctx||this.playing||!this.on) return; this.playing=true; if(!this.gain){ this.gain=Sound.ctx.createGain(); this.gain.gain.value=0.5; this.gain.connect(Sound.ctx.destination); } this.next=Sound.ctx.currentTime+0.1; this.step=0; this.timer=setInterval(()=>this.schedule(),90); },
+  start(){ if(!Sound.ctx||this.playing||!this.on||AudioFiles.curName) return; this.playing=true; if(!this.gain){ this.gain=Sound.ctx.createGain(); this.gain.gain.value=0.5; this.gain.connect(Sound.ctx.destination); } this.next=Sound.ctx.currentTime+0.1; this.step=0; this.timer=setInterval(()=>this.schedule(),90); },
   stop(){ this.playing=false; if(this.timer) clearInterval(this.timer); this.timer=null; },
   note(freq,t,dur,type,vol){ const c=Sound.ctx,o=c.createOscillator(),g=c.createGain(); o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(this.gain); o.start(t); o.stop(t+dur+0.02); },
   schedule(){
@@ -339,6 +344,29 @@ const Music={
     }
   },
   setRate(r){ this.rate=r; },
+};
+// ---------- 오디오 파일(힉스필드 제작) — 있으면 파일 재생, 없으면 합성음으로 대체 ----------
+const AudioFiles={
+  buf:{}, names:['pop1','pop2','pop3','pop4','pop5','land','drop','rotate','move','garbage','rockbreak','count','go','ui','warn','win','lose'],
+  bgm:{}, cur:null, curName:null, gainNode:null, loaded:false,
+  async load(){
+    if(!Sound.ctx||this.loaded) return; this.loaded=true;
+    const get=async(n)=>{ for(const ext of ['mp3','wav','ogg']){ try{ const r=await fetch(`assets/audio/${n}.${ext}`); if(!r.ok) continue; const ab=await r.arrayBuffer(); return await Sound.ctx.decodeAudioData(ab); }catch(e){} } return null; };
+    await Promise.all(this.names.map(async n=>{ const b=await get(n); if(b) this.buf[n]=b; }));
+    await Promise.all(['bgm_menu','bgm_play','bgm_danger'].map(async n=>{ const b=await get(n); if(b) this.bgm[n]=b; }));
+    if(Object.keys(this.bgm).length){ Music.stop(); this.gainNode=Sound.ctx.createGain(); this.gainNode.gain.value=0.55; this.gainNode.connect(Sound.ctx.destination); this.play(this.wanted||'bgm_menu'); }
+  },
+  has(n){ return !!this.buf[n]; },
+  sfx(n,vol=1,rate=1){ const b=this.buf[n]; if(!b||!Sound.on) return false; const s=Sound.ctx.createBufferSource(), g=Sound.ctx.createGain(); s.buffer=b; s.playbackRate.value=rate; g.gain.value=vol; s.connect(g); g.connect(Sound.ctx.destination); s.start(); return true; },
+  wanted:'bgm_menu',
+  play(name){
+    this.wanted=name; if(!this.bgm[name]||!this.gainNode) return; if(this.curName===name) return;
+    const c=Sound.ctx, t=c.currentTime;
+    if(this.cur){ const old=this.cur, og=this.curGain; og.gain.setValueAtTime(og.gain.value,t); og.gain.linearRampToValueAtTime(0,t+0.6); old.stop(t+0.65); }
+    const s=c.createBufferSource(), g=c.createGain(); s.buffer=this.bgm[name]; s.loop=true; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(Music.on?1:0,t+0.6); s.connect(g); g.connect(this.gainNode); s.start(t);
+    this.cur=s; this.curGain=g; this.curName=name;
+  },
+  setOn(on){ if(this.curGain){ const t=Sound.ctx.currentTime; this.curGain.gain.cancelScheduledValues(t); this.curGain.gain.setValueAtTime(this.curGain.gain.value,t); this.curGain.gain.linearRampToValueAtTime(on?1:0,t+0.3); } },
 };
 const buzz=p=>{ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} };
 
@@ -444,7 +472,7 @@ class Player{
     this.popCells=[]; this.garbageCells=[]; this.popup=null; this.over=false; this.won=false;
     this.aiTarget=null; this.aiTimer=0;
     this.fx={}; this.particles=[]; this.shake=0; this.flash=0; this.near=[]; this.nearDirty=true; this.t=0;
-    this.vis={c:2,ang:-90,rowOff:0};
+    this.vis={c:2,ang:-90,rowOff:0}; this.cell=32; this.nextCell=22;
     this.els={ board:document.getElementById(id+'board'), next:document.getElementById(id+'next'), gq:document.getElementById(id+'gq'),
       score:document.getElementById(id+'score'), sub:document.getElementById(id+'sub'), name:document.getElementById(id+'name') };
     this.ctx=this.els.board.getContext('2d');
@@ -513,7 +541,7 @@ class Player{
     const [dr,dc]=DIRS[p.rot]; return [[r,p.c,p.colors[0]],[r+dr,p.c+dc,p.colors[1]]];
   }
   emitPop(k,color,chain){
-    const cell=this.game.cell, cx=(k%COLS)*cell+cell/2, cy=(((k/COLS)|0)-1)*cell+cell/2, B=BLOCKS[color];
+    const cell=this.cell||this.game.cell, cx=(k%COLS)*cell+cell/2, cy=(((k/COLS)|0)-1)*cell+cell/2, B=BLOCKS[color];
     const n=6+Math.min(10,chain*2);
     for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, sp=cell*(2+Math.random()*4);
       this.particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-cell*2,r:cell*(0.08+Math.random()*0.12),col:Math.random()<0.5?B.main:B.light,life:0.5+Math.random()*0.4,type:0}); }
@@ -531,7 +559,7 @@ class Player{
     }
     if(this.shake>0) this.shake*=Math.exp(-dt*7); if(this.shake<0.05) this.shake=0;
     if(this.flash>0) this.flash=Math.max(0,this.flash-dt*3);
-    const cell=this.game.cell;
+    const cell=this.cell||this.game.cell;
     this.particles=this.particles.filter(p=>{ p.life-=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=cell*18*dt; if(p.rot!==undefined) p.rot+=dt*8; return p.life>0; });
     if(this.popup){ this.popup.t-=dt; if(this.popup.t<=0) this.popup=null; }
     this.shown+= (this.score-this.shown)*Math.min(1,dt*7); if(Math.abs(this.score-this.shown)<1) this.shown=this.score;
@@ -569,7 +597,8 @@ class Player{
           this.chainNow++; if(this.chainNow>this.maxChain) this.maxChain=this.chainNow;
           const s=stepScore(pops,this.chainNow); this.score+=s.points; this.turnScore+=s.points; this.totalPopped+=s.popped;
           this.popCells=pops.groups.flatMap(g=>g.cells); this.garbageCells=pops.garbage;
-          this.popup={text:this.chainNow>=2?`${this.chainNow}연쇄!`:'톡!',t:0.9,big:this.chainNow>=3,chain:this.chainNow};
+          const praise=['','','','GOOD!','GREAT!!','EXCELLENT!!','AMAZING!!!','PERFECT!!!'][Math.min(this.chainNow,7)];
+          this.popup={text:this.chainNow>=2?`${this.chainNow}연쇄!`:'톡!',sub:praise,t:this.chainNow>=3?1.2:0.9,big:this.chainNow>=3,chain:this.chainNow};
           Sound.pop(this.chainNow);
           if(this.human){ buzz(this.chainNow>=3?[30,40,60]:20); }
           if(this.chainNow>=2) this.shake+=Math.min(14,2+this.chainNow*2.2);
@@ -582,6 +611,7 @@ class Player{
         this.timer-=dt;
         if(this.timer<=0){
           for(const k of this.popCells) this.emitPop(k,this.grid[k],this.chainNow);
+          if(this.garbageCells.length) Sound.rockbreak();
           for(const k of this.garbageCells) this.emitPop(k,GARBAGE,1);
           for(const k of this.popCells) this.grid[k]=0;
           for(const k of this.garbageCells) this.grid[k]=0;
@@ -660,12 +690,13 @@ class Player{
     if(this.flash>0){ ctx.fillStyle=`rgba(255,255,255,${this.flash*0.55})`; ctx.fillRect(0,0,W,H); }
     // 연쇄 팝업
     if(this.popup){
-      const life=0.9, t=life-this.popup.t, sc=t<0.18?0.5+0.5*Math.sin(t/0.18*Math.PI/2)*1.25:(t<0.3?1.125-(t-0.18)/0.12*0.125:1);
+      const life=this.popup.big?1.2:0.9, t=life-this.popup.t, sc=t<0.18?0.5+0.5*Math.sin(t/0.18*Math.PI/2)*1.25:(t<0.3?1.125-(t-0.18)/0.12*0.125:1);
       const al=this.popup.t<0.25?this.popup.t/0.25:1;
       ctx.save(); ctx.globalAlpha=al; ctx.translate(W/2,H*0.4-t*cell*0.6); ctx.scale(sc,sc); ctx.rotate(-0.06);
       ctx.font=`900 ${this.popup.big?cell*1.35:cell*1.0}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.lineWidth=cell*0.2; ctx.strokeStyle='rgba(90,40,10,.9)'; ctx.strokeText(this.popup.text,0,0);
       const g=ctx.createLinearGradient(0,-cell*0.6,0,cell*0.6); g.addColorStop(0,'#fff8c2'); g.addColorStop(1,this.popup.big?'#ffb020':'#ffe36e'); ctx.fillStyle=g; ctx.fillText(this.popup.text,0,0);
+      if(this.popup.sub){ ctx.font=`900 ${cell*0.62}px sans-serif`; ctx.lineWidth=cell*0.14; ctx.strokeText(this.popup.sub,0,cell*1.05); ctx.fillStyle='#fff'; ctx.fillText(this.popup.sub,0,cell*1.05); }
       ctx.restore();
     }
     ctx.restore();
@@ -679,7 +710,7 @@ class Player{
     this.drawGarbageQueue();
   }
   drawNext(){
-    const cv=this.els.next, ctx=cv.getContext('2d'), s=this.game.nextCell, dpr=window.devicePixelRatio||1;
+    const cv=this.els.next, ctx=cv.getContext('2d'), s=this.nextCell||this.game.nextCell, dpr=window.devicePixelRatio||1;
     ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cv.width,cv.height);
     for(let i=0;i<2;i++){ const pr=this.game.pair(this.seqIndex+i), x=i*(s+6)+3, sc=i?0.82:1;
       ctx.save(); ctx.globalAlpha=i?0.75:1; drawBlock(ctx,pr[1],x,2,s*sc); drawBlock(ctx,pr[0],x,2+s*sc,s*sc); ctx.restore(); }
@@ -688,7 +719,7 @@ class Player{
     const cv=this.els.gq, ctx=cv.getContext('2d'), dpr=window.devicePixelRatio||1;
     ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cv.width,cv.height);
     if(this.game.mode!=='versus') return;
-    let x=2; const big=Math.floor(this.pending/6), small=this.pending%6, s=this.game.nextCell, w=cv.width/dpr, bob=Math.sin(this.t*6)*1.5;
+    let x=2; const big=Math.floor(this.pending/6), small=this.pending%6, s=this.nextCell||this.game.nextCell, w=cv.width/dpr, bob=Math.sin(this.t*6)*1.5;
     for(let i=0;i<big&&x<w-s;i++){ drawBlock(ctx,GARBAGE,x,2+bob,s*1.05); x+=s*1.05+2; }
     for(let i=0;i<small&&x<w-s*0.6;i++){ drawBlock(ctx,GARBAGE,x,2+s*0.35+bob,s*0.62); x+=s*0.62+2; }
   }
@@ -715,7 +746,7 @@ class Game{
     document.getElementById('p1').classList.add('on');
     document.getElementById('p2').classList.toggle('on',mode==='versus');
     document.getElementById('p2name').textContent=['CPU 쉬움','CPU 보통','CPU 어려움'][level]||'CPU';
-    this.layout(); UI.hide();
+    this.layout(); UI.hide(); AudioFiles.play('bgm_play');
     this.running=false; this.countdown(()=>{ this.running=true; });
   }
   countdown(done){
@@ -736,28 +767,32 @@ class Game{
     const me=this.players[0]; let newBest=false;
     if(this.mode==='solo'&&me.score>this.best.solo){ this.best.solo=me.score; newBest=true; }
     if(me.maxChain>this.best.chain) this.best.chain=me.maxChain;
-    this.saveBest(); setTimeout(()=>UI.result(this,newBest),1100);
+    this.saveBest(); AudioFiles.play('bgm_menu'); setTimeout(()=>UI.result(this,newBest),1100);
   }
   layout(){
     const n=this.players.length||1, dpr=window.devicePixelRatio||1;
     const availW=this.main.clientWidth-16-(n-1)*14, availH=this.main.clientHeight-8-78;
-    let cell=Math.floor(Math.min(availW/(n*COLS),availH/VIS)); cell=clamp(cell,16,56);
+    const portrait=this.main.clientWidth<this.main.clientHeight;
+    const ratio2=(n===2&&portrait)?0.62:1;   // 세로 폰 대전: 내 판 크게, 상대 판 작게
+    let cell=Math.floor(Math.min(availW/(COLS*(1+(n-1)*ratio2)),availH/VIS)); cell=clamp(cell,16,56);
     this.cell=cell; this.nextCell=Math.max(16,Math.floor(cell*0.68));
-    for(const p of this.players){
-      const b=p.els.board; b.style.width=cell*COLS+'px'; b.style.height=cell*VIS+'px'; b.width=cell*COLS*dpr; b.height=cell*VIS*dpr; p.ctx.setTransform(dpr,0,0,dpr,0,0);
-      const nx=p.els.next, nw=this.nextCell*1.82+12, nh=this.nextCell*2+4; nx.style.width=nw+'px'; nx.style.height=nh+'px'; nx.width=nw*dpr; nx.height=nh*dpr;
-      const gq=p.els.gq, gw=Math.max(30,cell*COLS-nw-80), gh=this.nextCell*1.1+6; gq.style.width=gw+'px'; gq.style.height=gh+'px'; gq.width=gw*dpr; gq.height=gh*dpr;
+    this.players.forEach((p,i)=>{
+      const c=i===0?cell:Math.max(12,Math.floor(cell*ratio2)); p.cell=c; p.nextCell=Math.max(12,Math.floor(c*0.68));
+      const b=p.els.board; b.style.width=c*COLS+'px'; b.style.height=c*VIS+'px'; b.width=c*COLS*dpr; b.height=c*VIS*dpr; p.ctx.setTransform(dpr,0,0,dpr,0,0);
+      const nx=p.els.next, nw=p.nextCell*1.82+12, nh=p.nextCell*2+4; nx.style.width=nw+'px'; nx.style.height=nh+'px'; nx.width=nw*dpr; nx.height=nh*dpr;
+      const gq=p.els.gq, gw=Math.max(24,c*COLS-nw-(i===0?80:56)), gh=p.nextCell*1.1+6; gq.style.width=gw+'px'; gq.style.height=gh+'px'; gq.width=gw*dpr; gq.height=gh*dpr;
+      p.els.board.parentElement.parentElement.classList.toggle('mini',i===1&&ratio2<1);
       p.drawNext();
-    }
+    });
   }
   tick(ts){
     const dt=Math.min(0.05,(ts-this.last)/1000||0); this.last=ts;
     if(this.running&&!this.paused){
       for(const p of this.players) p.update(dt);
-      { const h2=ROWS-colTop(this.players[0].grid,2); Music.setRate(h2>=8?1.18:1); }
+      { const h2=ROWS-colTop(this.players[0].grid,2), danger=h2>=8; Music.setRate(danger?1.18:1); AudioFiles.play(danger?'bgm_danger':'bgm_play'); if(danger&&!this.warned){ this.warned=true; Sound.warn(); } if(!danger) this.warned=false; }
       if(this.mode==='solo'){ const lv=1+Math.floor(this.players[0].totalPopped/40); if(lv!==this.level){ this.level=lv; this.players[0].popup={text:`레벨 ${lv}!`,t:1.1,big:true}; Sound.ui(); } }
     } else if(this.finished){ for(const p of this.players) p.update(dt); }
-    for(const p of this.players) p.draw(this.cell);
+    for(const p of this.players) p.draw(p.cell||this.cell);
     FX.tick(dt); Bubbles.tick(dt);
     requestAnimationFrame(t=>this.tick(t));
   }
@@ -776,8 +811,8 @@ const UI={
     }
     return box; },
   menu(game){
-    this.show();
-    this.card.innerHTML=`<div class="title">참외<b>톡톡</b></div><div class="tag">달성 특산물 4개를 붙이면 톡! 연쇄로 상대를 눌러라</div>`;
+    this.show(); AudioFiles.play('bgm_menu');
+    this.card.innerHTML=`<div class="title">참외<b>톡톡</b></div><div class="tag">같은 과일 4개를 붙이면 톡! 연쇄로 상대를 눌러라</div>`;
     this.card.appendChild(this.mascots());
     const menu=document.createElement('div'); menu.className='menu';
     menu.innerHTML=`<button class="btn primary" data-m="solo">혼자하기</button>
@@ -788,7 +823,7 @@ const UI={
       <button class="link" data-m="tuto">게임 방법</button>`;
     this.card.appendChild(menu);
     const help=document.createElement('div'); help.className='help';
-    help.innerHTML=`<b>키보드</b> ← → 이동 · Z/X 회전 · ↓ 빨리 내리기 · ↑/Space 바로 놓기<br><b>터치</b> 좌우로 밀면 이동 · 탭하면 회전(왼쪽 탭 ↺ / 오른쪽 탭 ↻) · 아래로 밀면 바로 놓기<br><b>규칙</b> 같은 특산물 4개 이상이 붙으면 사라지고, 연달아 터지면(연쇄) 점수가 크게 오르며 상대에게 바위가 떨어집니다. 바위는 옆의 특산물이 터질 때 함께 사라집니다. 3번째 칸 맨 위가 막히면 패배.`;
+    help.innerHTML=`<b>키보드</b> ← → 이동 · Z/X 회전 · ↓ 빨리 내리기 · ↑/Space 바로 놓기<br><b>터치</b> 좌우로 밀면 이동 · 탭하면 회전(왼쪽 탭 ↺ / 오른쪽 탭 ↻) · 아래로 밀면 바로 놓기<br><b>규칙</b> 같은 과일 4개 이상이 붙으면 사라지고, 연달아 터지면(연쇄) 점수가 크게 오르며 상대에게 바위가 떨어집니다. 바위는 옆의 과일이 터질 때 함께 사라집니다. 3번째 칸 맨 위가 막히면 패배.`;
     this.card.appendChild(help);
     const chip=document.createElement('div'); chip.className='chip'; chip.innerHTML=`🏆 최고 ${game.best.solo.toLocaleString()}점 &nbsp;·&nbsp; 🔥 최대 ${game.best.chain}연쇄`;
     this.card.appendChild(chip);
@@ -803,9 +838,9 @@ const UI={
   tutorial(game,done){
     this.show(); let page=0;
     const pages=[
-      {t:'같은 특산물 4개를 붙이면 톡!',d:'위에서 떨어지는 두 개를 좌우로 옮기고 회전해서 쌓아요.<br>같은 것이 상하좌우로 <b>4개 이상</b> 붙으면 터집니다.',draw:(ctx,s)=>{ [[2,0],[2,1],[1,1],[2,2]].forEach(([r,c])=>drawBlock(ctx,1,c*s+s*0.5,r*s,s,1,1,1,0,1)); [[2,3],[1,3]].forEach(([r,c])=>drawBlock(ctx,2,c*s+s*0.5,r*s,s)); ctx.font=`900 ${s*0.9}px sans-serif`; ctx.textAlign='center'; ctx.fillStyle='#ff9f1c'; ctx.strokeStyle='#7a3b00'; ctx.lineWidth=s*0.12; ctx.strokeText('톡!',s*2.2,s*0.7); ctx.fillText('톡!',s*2.2,s*0.7); }},
+      {t:'같은 과일 4개를 붙이면 톡!',d:'위에서 떨어지는 두 개를 좌우로 옮기고 회전해서 쌓아요.<br>같은 것이 상하좌우로 <b>4개 이상</b> 붙으면 터집니다.',draw:(ctx,s)=>{ [[2,0],[2,1],[1,1],[2,2]].forEach(([r,c])=>drawBlock(ctx,1,c*s+s*0.5,r*s,s,1,1,1,0,1)); [[2,3],[1,3]].forEach(([r,c])=>drawBlock(ctx,2,c*s+s*0.5,r*s,s)); ctx.font=`900 ${s*0.9}px sans-serif`; ctx.textAlign='center'; ctx.fillStyle='#ff9f1c'; ctx.strokeStyle='#7a3b00'; ctx.lineWidth=s*0.12; ctx.strokeText('톡!',s*2.2,s*0.7); ctx.fillText('톡!',s*2.2,s*0.7); }},
       {t:'연쇄가 핵심!',d:'터진 자리로 위에 있던 것이 무너져 내려 <b>또 터지면 연쇄</b>.<br>2연쇄, 3연쇄로 갈수록 점수가 훨씬 커집니다.',draw:(ctx,s)=>{ [[2,0],[2,1],[2,2]].forEach(([r,c])=>drawBlock(ctx,1,c*s+s*0.3,r*s,s,1,1,1,0,1)); drawBlock(ctx,1,3*s+s*0.3,0,s,1,1,1,-0.2,1); [[1,0],[1,1],[1,2]].forEach(([r,c])=>drawBlock(ctx,2,c*s+s*0.3,r*s,s)); drawBlock(ctx,2,4*s+s*0.3,2*s,s); ctx.fillStyle='#ff9f1c'; ctx.font=`900 ${s*0.7}px sans-serif`; ctx.textAlign='center'; ctx.strokeStyle='#7a3b00'; ctx.lineWidth=s*0.1; ctx.strokeText('2연쇄!',s*4.6,s*1.2); ctx.fillText('2연쇄!',s*4.6,s*1.2); }},
-      {t:'바위와 승부',d:'연쇄를 터뜨리면 상대 판에 <b>바위</b>가 떨어져요. 바위는 옆의 특산물이 터질 때 같이 사라집니다.<br><b>3번째 칸</b> 맨 위(▲)까지 쌓이면 패배!',draw:(ctx,s)=>{ [[1,0],[1,1],[1,2],[2,1]].forEach(([r,c])=>drawBlock(ctx,9,c*s+s*0.3,r*s,s)); [[2,0],[2,2],[2,3],[1,3]].forEach(([r,c])=>drawBlock(ctx,3,c*s+s*0.3,r*s,s,1,1,1,0,1)); ctx.fillStyle='#ef476f'; ctx.font=`900 ${s*0.6}px sans-serif`; ctx.textAlign='center'; ctx.fillText('▲',s*4.8,s*0.6); }},
+      {t:'바위와 승부',d:'연쇄를 터뜨리면 상대 판에 <b>바위</b>가 떨어져요. 바위는 옆의 과일이 터질 때 같이 사라집니다.<br><b>3번째 칸</b> 맨 위(▲)까지 쌓이면 패배!',draw:(ctx,s)=>{ [[1,0],[1,1],[1,2],[2,1]].forEach(([r,c])=>drawBlock(ctx,9,c*s+s*0.3,r*s,s)); [[2,0],[2,2],[2,3],[1,3]].forEach(([r,c])=>drawBlock(ctx,3,c*s+s*0.3,r*s,s,1,1,1,0,1)); ctx.fillStyle='#ef476f'; ctx.font=`900 ${s*0.6}px sans-serif`; ctx.textAlign='center'; ctx.fillText('▲',s*4.8,s*0.6); }},
       {t:'조작법',d:'<b>PC</b> ← → 이동 · Z/X 회전 · ↓ 빨리 · ↑/Space 바로 놓기 · Esc 일시정지<br><b>폰</b> 좌우로 밀기 = 이동 · 탭 = 회전(왼쪽 ↺ / 오른쪽 ↻) · 아래로 밀기 = 바로 놓기<br>상단 <b>1×/2×/4×</b>로 속도, 🎵로 음악을 조절해요.',draw:(ctx,s)=>{ drawBlock(ctx,4,s*0.6,s*0.3,s*1.6,1,1,1,-0.15,1); drawBlock(ctx,1,s*3,s*0.3,s*1.6,1,1,1,0.15,1); }},
     ];
     const render=()=>{
@@ -858,11 +893,18 @@ document.addEventListener('keydown',e=>{
   else if(k==='z'||k==='Z') p.rotate(-1); else if(k==='x'||k==='X') p.rotate(1);
 });
 document.addEventListener('keyup',e=>{ const p=game.players[0]; if(p&&e.key==='ArrowDown') p.softDrop=false; });
-document.getElementById('touch').addEventListener('pointerdown',e=>{
-  const b=e.target.closest('button'); if(!b) return; e.preventDefault(); Sound.init(); buzz(6);
-  const p=me(); if(!p) return;
-  ({left:()=>p.move(-1),right:()=>p.move(1),cw:()=>p.rotate(1),ccw:()=>p.rotate(-1),drop:()=>p.hardDrop()})[b.dataset.act]?.();
-});
+(function(){
+  const touch=document.getElementById('touch'); let rep=null, dropT=0, dropDone=false;
+  const stop=()=>{ if(rep){ clearInterval(rep); rep=null; } const p=game.players[0]; if(p) p.softDrop=false; if(dropT&&!dropDone){ const q=me(); if(q) q.hardDrop(); } dropT=0; dropDone=false; };
+  touch.addEventListener('pointerdown',e=>{
+    const b=e.target.closest('button'); if(!b) return; e.preventDefault(); Sound.init(); buzz(6);
+    const p=me(); if(!p) return; const act=b.dataset.act;
+    if(act==='left'||act==='right'){ const d=act==='left'?-1:1; p.move(d); rep=setInterval(()=>{ const q=me(); if(q) q.move(d); },110); }
+    else if(act==='cw') p.rotate(1); else if(act==='ccw') p.rotate(-1);
+    else if(act==='drop'){ dropT=performance.now(); dropDone=false; rep=setInterval(()=>{ if(performance.now()-dropT>220){ const q=me(); if(q){ q.softDrop=true; dropDone=true; } } },50); }
+  });
+  touch.addEventListener('pointerup',stop); touch.addEventListener('pointercancel',stop); touch.addEventListener('pointerleave',stop);
+})();
 (function(){
   const b=document.getElementById('p1board'); let sx=0,sy=0,t0=0,moved=false,done=false;
   b.addEventListener('pointerdown',e=>{ Sound.init(); sx=e.clientX; sy=e.clientY; t0=performance.now(); moved=false; done=false; try{ b.setPointerCapture(e.pointerId); }catch(_){} });
@@ -873,22 +915,23 @@ document.getElementById('touch').addEventListener('pointerdown',e=>{
   });
   b.addEventListener('pointerup',e=>{ const p=me(); if(!p||done) return; if(!moved&&performance.now()-t0<300){ (e.clientX-b.getBoundingClientRect().left<b.clientWidth/2)?p.rotate(-1):p.rotate(1); buzz(6); } });
 })();
+document.getElementById('btnHelp').onclick=()=>{ Sound.init(); Sound.ui(); const wasRunning=game.running&&!game.finished; if(wasRunning) game.paused=true; UI.tutorial(game,()=>{ if(wasRunning){ UI.pause(game); } else UI.menu(game); }); };
 const btnSpeed=document.getElementById('btnSpeed'); btnSpeed.textContent=game.speed+'×';
 btnSpeed.onclick=()=>{ Sound.init(); Sound.ui(); game.speed=game.speed>=4?1:game.speed*2; btnSpeed.textContent=game.speed+'×'; try{ localStorage.setItem('chamoetok-speed',game.speed); }catch(e){} };
 document.getElementById('btnSound').onclick=e=>{ Sound.on=!Sound.on; e.target.textContent=Sound.on?'🔊':'🔇'; Sound.init(); try{ localStorage.setItem('chamoetok-sfx',Sound.on?'1':'0'); }catch(_){} };
 const btnMusic=document.getElementById('btnMusic');
 try{ Music.on=localStorage.getItem('chamoetok-music')!=='0'; Sound.on=localStorage.getItem('chamoetok-sfx')!=='0'; }catch(_){}
 btnMusic.textContent=Music.on?'🎵':'🎵̸'; document.getElementById('btnSound').textContent=Sound.on?'🔊':'🔇';
-btnMusic.onclick=()=>{ Music.on=!Music.on; btnMusic.style.opacity=Music.on?'1':'.45'; try{ localStorage.setItem('chamoetok-music',Music.on?'1':'0'); }catch(_){} Sound.init(); if(Music.on) Music.start(); else Music.stop(); };
+btnMusic.onclick=()=>{ Music.on=!Music.on; btnMusic.style.opacity=Music.on?'1':'.45'; try{ localStorage.setItem('chamoetok-music',Music.on?'1':'0'); }catch(_){} Sound.init(); AudioFiles.setOn(Music.on); if(Music.on) Music.start(); else Music.stop(); };
 btnMusic.style.opacity=Music.on?'1':'.45'; btnMusic.textContent='🎵';
 // 첫 사용자 입력 시 오디오 시작 (브라우저 정책)
-const kick=()=>{ Sound.init(); if(Music.on) Music.start(); }; document.addEventListener('pointerdown',kick,{once:true}); document.addEventListener('keydown',kick,{once:true});
+const kick=()=>{ Sound.init(); AudioFiles.load().then(()=>{ if(Music.on&&!AudioFiles.curName) Music.start(); }); }; document.addEventListener('pointerdown',kick,{once:true}); document.addEventListener('keydown',kick,{once:true});
 document.getElementById('btnPause').onclick=()=>{ Sound.init(); if(game.paused){ game.paused=false; UI.hide(); } else if(game.running) UI.pause(game); else UI.menu(game); };
 document.addEventListener('visibilitychange',()=>{ if(document.hidden&&game.running&&!game.finished) UI.pause(game); });
 window.addEventListener('resize',()=>{ drawBackground(); FX.resize(); Bubbles.resize(); if(game.players.length) game.layout(); });
 
 drawBackground(); FX.resize(); Bubbles.resize();
-(function(){ let seen=false; try{ seen=localStorage.getItem('chamoetok-tuto')==='1'; }catch(e){} if(seen) UI.menu(game); else UI.tutorial(game,()=>UI.menu(game)); })(); requestAnimationFrame(t=>{ game.last=t; game.tick(t); });
+UI.menu(game); requestAnimationFrame(t=>{ game.last=t; game.tick(t); });
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 window.DT={COLS,ROWS,idx,newGrid,gravityMoves,findPops,stepScore,resolveAll,simulatePlace,aiChoose,evaluate,game,Player,UI};
 </script>

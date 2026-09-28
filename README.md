@@ -12,7 +12,7 @@
 
 ## 테스트 방법
 - PC: index.html 더블클릭 → 키보드(←→ 이동, Z/X 회전, ↓ 빨리, ↑/Space 바로놓기, Esc 일시정지)
-- 폰: 폴더째 GitHub Pages/Render에 올리면 주소로 접속. 터치(좌우 드래그 이동, 탭 회전, 아래로 스와이프 놓기)
+- 폰: https://chohohyeon.github.io/chamoetok/ (수정 후 update.bat 더블클릭으로 반영). 터치(좌우 드래그 이동, 탭 회전, 아래로 스와이프 놓기)
 
 ## 스토어 등록(최종 단계) — Capacitor 패키징
 1. Node.js 설치 후 이 폴더에서: npm install

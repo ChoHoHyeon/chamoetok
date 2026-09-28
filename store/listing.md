@@ -36,7 +36,7 @@
 폭력·선정성·약물·도박 없음, 사용자 간 상호작용 없음, 개인정보 수집 없음, 인앱 구매 없음, 광고 없음 → 전체이용가(3세 이상) 예상
 
 ## 개인정보처리방침 URL
-privacy.html 을 GitHub Pages 등에 올린 주소 (예: https://chohohyeon.github.io/chamoetok/privacy.html)
+https://chohohyeon.github.io/chamoetok/privacy.html
 
 ## 필요한 그래픽
 - 앱 아이콘 512×512 PNG (assets/icon-512.png)
