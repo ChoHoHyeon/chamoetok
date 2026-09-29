@@ -138,7 +138,7 @@
 
 <script>
 'use strict';
-const APP_VERSION='0.5.2';
+const APP_VERSION='0.6.0';
 /* =====================================================================
    참외톡톡 — 과일 낙하 퍼즐 (오리지널 게임)
    같은 과일 4개 이상을 붙이면 톡! 연쇄로 상대에게 바위를 보낸다.
@@ -389,6 +389,10 @@ const Voice={ names:['v_1','v_2','v_3','v_4','v_5','v_c2','v_c3','v_c4','v_c5','
     if(this.el[n]){ const c=this.el[n].cloneNode(); c.volume=vol; c.play().catch(()=>{}); return; }
     const b=this.buf[n]; if(!b||!Sound.ctx) return; const s=Sound.ctx.createBufferSource(), g=Sound.ctx.createGain(); s.buffer=b; g.gain.value=vol; s.connect(g); g.connect(Sound.ctx.destination); s.start(); },
 };
+const WakeLock={ lock:null,
+  async on(){ try{ if('wakeLock' in navigator && !this.lock){ this.lock=await navigator.wakeLock.request('screen'); this.lock.addEventListener('release',()=>{ this.lock=null; }); } }catch(e){} },
+  async off(){ try{ if(this.lock){ await this.lock.release(); this.lock=null; } }catch(e){} },
+};
 const buzz=p=>{ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} };
 
 // ---------- 스프라이트 로딩 (없으면 벡터 그림으로 대체) ----------
@@ -514,24 +518,25 @@ class Player{
     if(this.grid[idx(1,2)]||this.grid[idx(0,2)]){ this.game.playerOver(this); return; }
     const colors=this.game.pair(this.seqIndex++);
     this.piece={colors,r:1,c:2,rot:0};
-    this.vis={c:2,ang:-90}; this.fallAcc=0; this.lockT=0; this.state='control';
+    this.vis={c:2,ang:-90}; this.fallAcc=0; this.lockT=0; this.lockResets=0; this.state='control';
     if(this.isAI){ this.aiTarget=aiChoose(this.grid,colors,this.level,this.pending,this.nColors); this.aiTimer=[0.7,0.4,0.15][this.level]/this.game.speed; }
     this.drawNext();
   }
   move(d){
     if(this.state!=='control'||!this.piece) return false;
     const p=this.piece;
-    if(this.fits(p.r,p.c+d,p.rot)){ p.c+=d; if(this.human) Sound.move(); return true; }
+    if(this.fits(p.r,p.c+d,p.rot)){ p.c+=d; this.lockReset(); if(this.human) Sound.move(); return true; }
     return false;
   }
+  lockReset(){ if(this.lockT>0&&this.lockResets<8){ this.lockResets++; this.lockT=0; } }   // 바닥에 닿은 뒤 조작하면 고정 타이머 초기화(최대 8회)
   rotate(d){
     if(this.state!=='control'||!this.piece) return false;
     const p=this.piece, nr=(p.rot+d+4)%4;
     for(const [kr,kc] of [[0,0],[0,-1],[0,1],[-1,0]]){
-      if(this.fits(p.r+kr,p.c+kc,nr)){ p.r+=kr; p.c+=kc; p.rot=nr; if(this.human) Sound.rotate(); return true; }
+      if(this.fits(p.r+kr,p.c+kc,nr)){ p.r+=kr; p.c+=kc; p.rot=nr; this.lockReset(); if(this.human) Sound.rotate(); return true; }
     }
     if(p.rot===0||p.rot===2){ const fr=(p.rot+2)%4;
-      for(const kr of [0,-1]) if(this.fits(p.r+kr,p.c,fr)){ p.r+=kr; p.rot=fr; if(this.human) Sound.rotate(); return true; } }
+      for(const kr of [0,-1]) if(this.fits(p.r+kr,p.c,fr)){ p.r+=kr; p.rot=fr; this.lockReset(); if(this.human) Sound.rotate(); return true; } }
     return false;
   }
   hardDrop(){
@@ -774,7 +779,8 @@ class Game{
     document.getElementById('p2').classList.toggle('on',mode==='versus');
     document.getElementById('p2name').textContent=['CPU 쉬움','CPU 보통','CPU 어려움'][level]||'CPU';
     this.layout(); UI.hide(); AudioFiles.play('bgm_play');
-    this.running=false; this.countdown(()=>{ this.running=true; });
+    try{ if(!history.state||!history.state.game) history.pushState({game:1},''); }catch(e){}
+    this.running=false; WakeLock.on(); this.countdown(()=>{ this.running=true; });
   }
   countdown(done){
     const el=document.getElementById('countdown'), tx=document.getElementById('cdtext'); el.style.display='flex';
@@ -790,7 +796,7 @@ class Game{
     buzz([60,40,80]); this.finish();
   }
   finish(){
-    if(this.finished) return; this.finished=true; this.running=false;
+    if(this.finished) return; this.finished=true; this.running=false; WakeLock.off();
     const me=this.players[0]; let newBest=false;
     if(this.mode==='solo'&&me.score>this.best.solo){ this.best.solo=me.score; newBest=true; }
     if(me.maxChain>this.best.chain) this.best.chain=me.maxChain;
@@ -900,7 +906,7 @@ const UI={
       <div class="menu"><button class="btn primary" id="resume">계속하기</button><button class="btn" id="restart">다시하기</button><button class="btn" id="quit">메뉴로</button><button class="btn" id="exitApp" style="background:#fee2e2;color:#b91c1c;box-shadow:0 4px 0 #fca5a5">게임 종료</button></div>`;
     document.getElementById('resume').onclick=()=>{ Sound.ui(); game.paused=false; this.hide(); };
     document.getElementById('restart').onclick=()=>{ Sound.ui(); game.start(game.mode,game.aiLevel); };
-    document.getElementById('quit').onclick=()=>{ Sound.ui(); game.running=false; game.paused=false; this.menu(game); };
+    document.getElementById('quit').onclick=()=>{ Sound.ui(); game.running=false; game.paused=false; WakeLock.off(); this.menu(game); };
     document.getElementById('exitApp').onclick=()=>{ Sound.ui(); UI.exitApp(); };
   },
   result(game,newBest){
@@ -958,8 +964,12 @@ window.addEventListener('blur',()=>{ DAS.dir=0; const p=game.players[0]; if(p) p
   // 입력판 = 게임 영역 전체(#main): 내 판·상대 판·배경 어디서 시작해도 내 조각이 움직임. 버튼·HUD는 제외
   const b=document.getElementById('main');
   let sx=0,sy=0,t0=0,startCol=0,moved=false,done=false,soft=false,lastY=0,lastT=0,vy=0;
-  b.addEventListener('pointerdown',e=>{ if(e.target.closest('button,.hud,input,label')) return; Sound.init(); const p=me(); sx=e.clientX; sy=e.clientY; lastY=sy; lastT=t0=performance.now(); moved=false; done=false; soft=false; vy=0; startCol=p&&p.piece?p.piece.c:2; try{ b.setPointerCapture(e.pointerId); }catch(_){} });
+  let activeId=null;
+  b.addEventListener('pointerdown',e=>{ if(e.target.closest('button,.hud,input,label')) return; Sound.init(); const p=me();
+    if(activeId!==null&&e.pointerId!==activeId){ if(p) { p.rotate(1); buzz(6); } return; }   // 두 번째 손가락 = 회전
+    activeId=e.pointerId; sx=e.clientX; sy=e.clientY; lastY=sy; lastT=t0=performance.now(); moved=false; done=false; soft=false; vy=0; startCol=p&&p.piece?p.piece.c:2; try{ b.setPointerCapture(e.pointerId); }catch(_){} });
   b.addEventListener('pointermove',e=>{
+    if(e.pointerId!==activeId) return;
     const p=me(); if(!p||done||!p.piece) return;
     const dx=e.clientX-sx, dy=e.clientY-sy, cell=game.players[0].cell||game.cell, now=performance.now();
     vy=(e.clientY-lastY)/Math.max(1,now-lastT); lastY=e.clientY; lastT=now;   // px/ms
@@ -976,7 +986,7 @@ window.addEventListener('blur',()=>{ DAS.dir=0; const p=game.players[0]; if(p) p
       else { soft=true; p.softDrop=true; moved=true; }
     } else if(soft&&dy<cell*0.3){ soft=false; p.softDrop=false; }
   });
-  const up=e=>{ const p=game.players[0]; if(p){ p.softDrop=false; p.dragVis=null; } const q=me(); if(!q||done) return;
+  const up=e=>{ if(e.pointerId!==activeId) return; activeId=null; const p=game.players[0]; if(p){ p.softDrop=false; p.dragVis=null; } const q=me(); if(!q||done) return;
     if(!moved&&performance.now()-t0<280){ const bb=document.getElementById('p1board').getBoundingClientRect(); if(game.settings.tapSplit && e.clientX<bb.left+bb.width/2) q.rotate(-1); else q.rotate(1); buzz(6); } };
   b.addEventListener('pointerup',up); b.addEventListener('pointercancel',up);
 })();
@@ -999,7 +1009,11 @@ document.addEventListener('contextmenu',e=>{ e.preventDefault(); return false; }
 document.addEventListener('selectstart',e=>{ if(!(e.target&&e.target.tagName==='INPUT')) e.preventDefault(); });
 document.addEventListener('dragstart',e=>e.preventDefault());
 document.querySelectorAll('img').forEach(im=>{ im.draggable=false; });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(game.running&&!game.finished) UI.pause(game); AudioFiles.setOn(false); if(Sound.ctx) Sound.ctx.suspend(); } else { if(Sound.ctx) Sound.ctx.resume(); AudioFiles.setOn(Music.on); } });
+window.addEventListener('popstate',()=>{
+  // 폰 뒤로가기: 게임 중이면 앱 종료 대신 일시정지, 메뉴에서는 그대로 종료
+  if(game.running&&!game.finished){ try{ history.pushState({game:1},''); }catch(e){} if(!game.paused) UI.pause(game); }
+});
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(game.running&&!game.finished) UI.pause(game); AudioFiles.setOn(false); if(Sound.ctx) Sound.ctx.suspend(); } else { if(Sound.ctx) Sound.ctx.resume(); AudioFiles.setOn(Music.on); if(game.running&&!game.finished) WakeLock.on(); } });
 window.addEventListener('resize',()=>{ drawBackground(); FX.resize(); Bubbles.resize(); if(game.players.length) game.layout(); });
 
 drawBackground(); FX.resize(); Bubbles.resize();
