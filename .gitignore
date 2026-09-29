@@ -11,3 +11,4 @@ assets/audio/src/
 *.aab
 *.apk
 signing-key-info.txt
+assets/audio/voice/src/

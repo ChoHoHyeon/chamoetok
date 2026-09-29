@@ -5,4 +5,6 @@ for(const f of ['index.html','manifest.json','sw.js']) fs.copyFileSync(f,path.jo
 for(const f of fs.readdirSync('assets')) if(/\.(png|jpg)$/.test(f)&&!f.startsWith('_')) fs.copyFileSync(path.join('assets',f),path.join(out,'assets',f));
 fs.mkdirSync(path.join(out,'assets','audio'),{recursive:true});
 for(const f of fs.readdirSync('assets/audio')) if(/\.mp3$/.test(f)) fs.copyFileSync(path.join('assets/audio',f),path.join(out,'assets','audio',f));
+fs.mkdirSync(path.join(out,'assets','audio','voice'),{recursive:true});
+for(const f of fs.readdirSync('assets/audio/voice')) if(/\.mp3$/.test(f)) fs.copyFileSync(path.join('assets/audio/voice',f),path.join(out,'assets','audio','voice',f));
 console.log('www/ 준비 완료');
