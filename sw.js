@@ -1,5 +1,5 @@
 // 참외톡톡 오프라인 캐시 (버전 올리면 새 파일로 교체됨)
-const CACHE = 'chamoetok-v0.5.1';
+const CACHE = 'chamoetok-v0.5.2';
 const FILES = [
   './', './index.html', './manifest.json',
   './assets/chamoe.png', './assets/tomato.png', './assets/watermelon.png', './assets/lotus.png', './assets/eggplant.png', './assets/rock.png',

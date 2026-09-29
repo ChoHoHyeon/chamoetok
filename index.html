@@ -138,7 +138,7 @@
 
 <script>
 'use strict';
-const APP_VERSION='0.5.1';
+const APP_VERSION='0.5.2';
 /* =====================================================================
    참외톡톡 — 과일 낙하 퍼즐 (오리지널 게임)
    같은 과일 4개 이상을 붙이면 톡! 연쇄로 상대에게 바위를 보낸다.
@@ -955,12 +955,13 @@ window.addEventListener('blur',()=>{ DAS.dir=0; const p=game.players[0]; if(p) p
 })();
 (function(){
   // 표준 모바일 조작: 손가락을 따라 조각이 그대로 이동(1:1) · 탭 = 시계방향 회전 · 아래로 빠르게 튕기기 = 바로 놓기 · 아래로 천천히 끌기 = 빨리 내리기
-  const b=document.getElementById('p1board');
+  // 입력판 = 게임 영역 전체(#main): 내 판·상대 판·배경 어디서 시작해도 내 조각이 움직임. 버튼·HUD는 제외
+  const b=document.getElementById('main');
   let sx=0,sy=0,t0=0,startCol=0,moved=false,done=false,soft=false,lastY=0,lastT=0,vy=0;
-  b.addEventListener('pointerdown',e=>{ Sound.init(); const p=me(); sx=e.clientX; sy=e.clientY; lastY=sy; lastT=t0=performance.now(); moved=false; done=false; soft=false; vy=0; startCol=p&&p.piece?p.piece.c:2; try{ b.setPointerCapture(e.pointerId); }catch(_){} });
+  b.addEventListener('pointerdown',e=>{ if(e.target.closest('button,.hud,input,label')) return; Sound.init(); const p=me(); sx=e.clientX; sy=e.clientY; lastY=sy; lastT=t0=performance.now(); moved=false; done=false; soft=false; vy=0; startCol=p&&p.piece?p.piece.c:2; try{ b.setPointerCapture(e.pointerId); }catch(_){} });
   b.addEventListener('pointermove',e=>{
     const p=me(); if(!p||done||!p.piece) return;
-    const dx=e.clientX-sx, dy=e.clientY-sy, cell=game.cell, now=performance.now();
+    const dx=e.clientX-sx, dy=e.clientY-sy, cell=game.players[0].cell||game.cell, now=performance.now();
     vy=(e.clientY-lastY)/Math.max(1,now-lastT); lastY=e.clientY; lastT=now;   // px/ms
     // 가로: 손가락 위치에 해당하는 열로 즉시 이동
     const target=startCol+Math.round(dx/cell);
@@ -976,7 +977,7 @@ window.addEventListener('blur',()=>{ DAS.dir=0; const p=game.players[0]; if(p) p
     } else if(soft&&dy<cell*0.3){ soft=false; p.softDrop=false; }
   });
   const up=e=>{ const p=game.players[0]; if(p){ p.softDrop=false; p.dragVis=null; } const q=me(); if(!q||done) return;
-    if(!moved&&performance.now()-t0<280){ if(game.settings.tapSplit && e.clientX-b.getBoundingClientRect().left<b.clientWidth/2) q.rotate(-1); else q.rotate(1); buzz(6); } };
+    if(!moved&&performance.now()-t0<280){ const bb=document.getElementById('p1board').getBoundingClientRect(); if(game.settings.tapSplit && e.clientX<bb.left+bb.width/2) q.rotate(-1); else q.rotate(1); buzz(6); } };
   b.addEventListener('pointerup',up); b.addEventListener('pointercancel',up);
 })();
 document.getElementById('btnHelp').onclick=()=>{ Sound.init(); Sound.ui(); const wasRunning=game.running&&!game.finished; if(wasRunning) game.paused=true; UI.tutorial(game,()=>{ if(wasRunning){ UI.pause(game); } else UI.menu(game); }); };
