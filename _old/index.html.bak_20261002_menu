@@ -76,17 +76,6 @@
   .opt{font-size:13px;font-weight:700;color:#6b7280;display:flex;align-items:center;gap:6px;cursor:pointer}
   .opt input{width:18px;height:18px;accent-color:var(--primary)}
   .label{font-size:12px;font-weight:800;color:#9aa0b4;text-align:left;margin:6px 4px 2px;letter-spacing:.5px}
-  .tools{display:flex;gap:8px;margin-top:6px}
-  .tool{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:#f8fafc;border:1.5px solid #eef1f6;border-radius:14px;padding:9px 4px 8px;font-family:inherit;font-size:12.5px;font-weight:800;color:#4b5563;cursor:pointer;white-space:nowrap}
-  .tool i{font-style:normal;font-size:18px;line-height:1}
-  .tool:active{transform:scale(.96);background:#f1f3f8}
-  .setlist{display:flex;flex-direction:column;gap:8px;text-align:left}
-  .setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f8fafc;border-radius:14px;padding:11px 14px;cursor:pointer}
-  .setrow b{display:block;font-size:14.5px;color:var(--ink)}
-  .setrow small{display:block;font-size:11.5px;color:#9ca3af;font-weight:600;margin-top:1px}
-  .setrow input{width:22px;height:22px;accent-color:#ff9f1c;flex:none}
-  @media (hover:hover) and (pointer:fine){ .setrow.mobile-only{display:none} }
-  .soonbox{margin-top:4px;font-size:12.5px;font-weight:700;color:#9a6b00;background:#fff7d6;border-radius:12px;padding:9px}
   .link{background:none;border:none;color:#6b7280;font-weight:700;font-size:13px;cursor:pointer;margin-top:4px;font-family:inherit;text-decoration:underline;text-underline-offset:3px}
   .help{font-size:13px;color:#4b5563;line-height:1.75;text-align:left;margin-top:12px;background:#f8fafc;border-radius:14px;padding:12px 14px;display:none}
   .help.on{display:block}
@@ -875,52 +864,25 @@ const UI={
       <div class="label">CPU 대전</div>
       <div class="seg" id="seg"><button data-d="0" class="e">쉬움</button><button data-d="1" class="n">보통</button><button data-d="2" class="h">어려움</button></div>
       <button class="btn blue" data-m="versus">대전 시작</button>
-      <div class="tools"><button class="tool" data-m="tuto"><i>❓</i>게임 방법</button><button class="tool" data-m="settings"><i>⚙️</i>설정</button><button class="tool" data-m="records"><i>🏅</i>기록</button></div>`;
+      <div class="opts"><label class="opt"><input type="checkbox" id="optGhost"> 착지 미리보기</label><label class="opt mobile-only"><input type="checkbox" id="optButtons"> 화면 버튼</label><label class="opt"><input type="checkbox" id="optVoice"> 캐릭터 음성</label></div>
+      <button class="link" data-m="tuto">게임 방법</button> <button class="link mobile-only" data-m="exit">종료</button>`;
     this.card.appendChild(menu);
     const help=document.createElement('div'); help.className='help';
     help.innerHTML=`<b>키보드</b> ← → 이동 · ↑/X 시계방향 · Z 반시계 · ↓ 빨리 내리기 · Space 바로 놓기<br><b>터치</b> 끌면 조각이 손가락을 따라 이동 · 탭 = 회전 · 아래로 튕기기 = 바로 놓기 · 아래로 천천히 끌기 = 빨리 내리기<br><b>규칙</b> 같은 과일 4개 이상이 붙으면 사라지고, 연달아 터지면(연쇄) 점수가 크게 오르며 상대에게 바위가 떨어집니다. 바위는 옆의 과일이 터질 때 함께 사라집니다. 3번째 칸 맨 위가 막히면 패배.`;
     this.card.appendChild(help);
+    const chip=document.createElement('div'); chip.className='chip'; chip.innerHTML=`<span>🏆 혼자 최고 ${game.best.solo.toLocaleString()}점</span><span>🔥 최대 ${game.best.chain}연쇄</span><span class="w">⚔️ 대전 ${(game.best.wins||[]).reduce((a,b)=>a+(b||0),0)}승</span>`;
+    this.card.appendChild(chip);
     const ver=document.createElement('div'); ver.className='small'; ver.style.marginTop='6px'; ver.textContent='v'+APP_VERSION; this.card.appendChild(ver);
+    const og=menu.querySelector('#optGhost'); og.checked=!!game.settings.ghost; og.onchange=()=>{ game.settings.ghost=og.checked; game.saveSettings(); Sound.init(); Sound.ui(); };
+    const ov=menu.querySelector('#optVoice'); ov.checked=Voice.on; ov.onchange=()=>{ Voice.on=ov.checked; try{ localStorage.setItem('chamoetok-voice',Voice.on?'1':'0'); }catch(e){} Sound.init(); Sound.ui(); };
+    const ob=menu.querySelector('#optButtons'); ob.checked=game.settings.buttons!==false; ob.onchange=()=>{ game.settings.buttons=ob.checked; game.saveSettings(); applyButtons(); Sound.init(); Sound.ui(); };
     const seg=menu.querySelector('#seg'); const setD=d=>{ this.diff=d; [...seg.children].forEach(b=>b.classList.toggle('on',+b.dataset.d===d)); }; setD(this.diff);
     seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ Sound.init(); Sound.ui(); setD(+b.dataset.d); } });
     menu.addEventListener('click',e=>{
       const m=e.target.closest('button')?.dataset.m; if(!m) return; Sound.init(); Sound.ui();
-      if(m==='solo') game.start('solo'); else if(m==='versus') game.start('versus',this.diff); else if(m==='tuto'){ this.openSub(); this.tutorial(game,()=>this.closeSub(game)); } else if(m==='settings'){ this.openSub(); this.settings(game); } else if(m==='records'){ this.openSub(); this.records(game); }
+      if(m==='solo') game.start('solo'); else if(m==='versus') game.start('versus',this.diff); else if(m==='tuto') this.tutorial(game,()=>this.menu(game)); else if(m==='exit') this.exitApp();
     });
   },
-  openSub(){ this.sub=true; try{ history.pushState({sub:1},''); }catch(e){} },
-  settings(game){
-    this.show();
-    this.card.innerHTML=`<div class="badge">설정</div><h2 style="margin:6px 0 14px;font-size:22px">게임 설정</h2>
-      <div class="setlist">
-        <label class="setrow"><span><b>착지 미리보기</b><small>과일이 떨어질 자리를 미리 보여줘요</small></span><input type="checkbox" id="optGhost"></label>
-        <label class="setrow mobile-only"><span><b>화면 버튼</b><small>화면 아래에 조작 버튼을 보여줘요</small></span><input type="checkbox" id="optButtons"></label>
-        <label class="setrow"><span><b>캐릭터 음성</b><small>연쇄·승리 때 캐릭터 목소리</small></span><input type="checkbox" id="optVoice"></label>
-        <label class="setrow"><span><b>배경 음악</b><small>상단 🎵 버튼과 같아요</small></span><input type="checkbox" id="optMusic"></label>
-        <label class="setrow"><span><b>효과음</b><small>끄면 음악·음성까지 모두 꺼져요</small></span><input type="checkbox" id="optSfx"></label>
-      </div>
-      <div class="menu" style="margin-top:16px"><button class="btn primary" id="backMenu">메뉴로</button></div>`;
-    const $=id=>this.card.querySelector('#'+id);
-    const og=$('optGhost'); og.checked=!!game.settings.ghost; og.onchange=()=>{ game.settings.ghost=og.checked; game.saveSettings(); Sound.init(); Sound.ui(); };
-    const ob=$('optButtons'); ob.checked=game.settings.buttons!==false; ob.onchange=()=>{ game.settings.buttons=ob.checked; game.saveSettings(); applyButtons(); Sound.init(); Sound.ui(); };
-    const ov=$('optVoice'); ov.checked=Voice.on; ov.onchange=()=>{ Voice.on=ov.checked; try{ localStorage.setItem('chamoetok-voice',Voice.on?'1':'0'); }catch(e){} Sound.init(); Sound.ui(); };
-    const om=$('optMusic'), os=$('optSfx'); const syncChk=()=>{ om.checked=bgmOn(); os.checked=Sound.on; };
-    syncChk();
-    om.onchange=()=>{ btnMusic.click(); syncChk(); };
-    os.onchange=()=>{ btnSound.click(); syncChk(); Sound.ui(); };
-    $('backMenu').onclick=()=>{ Sound.ui(); this.closeSub(game); };
-  },
-  records(game){
-    this.show(); const w=game.best.wins||[0,0,0], tw=w.reduce((a,b)=>a+(b||0),0);
-    this.card.innerHTML=`<div class="badge">기록</div><h2 style="margin:6px 0 4px;font-size:22px">나의 기록</h2><div class="small" style="margin-top:0">이 폰에 저장된 기록이에요</div>
-      <div class="stats"><div class="stat">혼자하기 최고점<b>${game.best.solo.toLocaleString()}</b></div><div class="stat">최대 연쇄<b>${game.best.chain}</b></div></div>
-      <div class="label">CPU 대전 승리 · 총 ${tw}승</div>
-      <div class="stats" style="margin-top:6px"><div class="stat">쉬움<b>${w[0]||0}</b></div><div class="stat">보통<b>${w[1]||0}</b></div><div class="stat">어려움<b>${w[2]||0}</b></div></div>
-      <div class="soonbox">🏆 전체 순위는 곧 추가될 예정이에요</div>
-      <div class="menu" style="margin-top:14px"><button class="btn primary" id="backMenu">메뉴로</button></div>`;
-    this.card.querySelector('#backMenu').onclick=()=>{ Sound.ui(); this.closeSub(game); };
-  },
-  closeSub(game){ if(this.sub){ this.sub=false; try{ if(history.state&&history.state.sub) history.back(); }catch(e){} } this.menu(game); },
   tutorial(game,done){
     this.show(); let page=0;
     const pages=[
@@ -1061,8 +1023,7 @@ document.addEventListener('dragstart',e=>e.preventDefault());
 document.querySelectorAll('img').forEach(im=>{ im.draggable=false; });
 window.addEventListener('popstate',()=>{
   // 폰 뒤로가기: 게임 중이면 앱 종료 대신 일시정지, 메뉴에서는 그대로 종료
-  if(game.running&&!game.finished){ try{ history.pushState({game:1},''); }catch(e){} if(!game.paused) UI.pause(game); return; }
-  if(UI.sub){ UI.sub=false; UI.menu(game); }
+  if(game.running&&!game.finished){ try{ history.pushState({game:1},''); }catch(e){} if(!game.paused) UI.pause(game); }
 });
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(game.running&&!game.finished) UI.pause(game); AudioFiles.setOn(false); if(Sound.ctx) Sound.ctx.suspend(); } else { if(Sound.ctx) Sound.ctx.resume(); AudioFiles.setOn(bgmOn()); if(game.running&&!game.finished) WakeLock.on(); } });
 window.addEventListener('resize',()=>{ drawBackground(); FX.resize(); Bubbles.resize(); if(game.players.length) game.layout(); });
