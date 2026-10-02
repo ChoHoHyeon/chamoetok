@@ -1,8 +1,15 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.chohohyeon.chamoetok",
-        "sha256_cert_fingerprints": ["B3:D4:28:A1:EC:52:B1:A5:91:0C:39:19:E7:17:F4:1F:3F:D8:F1:6F:A8:10:73:9B:7F:E1:46:0B:43:5B:12:2D"]
-      }
-    }]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.chohohyeon.chamoetok",
+      "sha256_cert_fingerprints": [
+        "B3:D4:28:A1:EC:52:B1:A5:91:0C:39:19:E7:17:F4:1F:3F:D8:F1:6F:A8:10:73:9B:7F:E1:46:0B:43:5B:12:2D",
+        "BE:6E:FF:97:23:BB:CC:4E:9C:3C:4A:03:F5:BD:AE:77:A3:81:02:2F:BD:E6:BD:1F:27:A3:8A:07:D1:5E:2F:4D"
+      ]
+    }
+  }
+]

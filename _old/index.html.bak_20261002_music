@@ -28,9 +28,6 @@
   .btns{display:flex;gap:8px}
   .icon-btn{width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.85);font-size:17px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.18);transition:transform .1s}
   .icon-btn:active{transform:scale(.9)}
-  .icon-btn{position:relative}
-  .icon-btn.off{opacity:.55}
-  .icon-btn.off::after{content:'';position:absolute;left:7px;right:7px;top:50%;height:3px;margin-top:-1.5px;background:#e11d48;border-radius:2px;transform:rotate(-45deg);pointer-events:none}
   main{flex:1;display:flex;justify-content:center;align-items:flex-start;gap:14px;padding:4px 8px;min-height:0}
   .player{display:none;flex-direction:column;align-items:center;gap:6px}
   .player.on{display:flex}
@@ -326,7 +323,6 @@ const Sound={
   go(){ if(AudioFiles.sfx('go',0.9)) return; this.tone(880,0.25,'triangle',0.1,400); },
 };
 // ---------- BGM (WebAudio 절차 생성, 파일 없음) ----------
-const bgmOn=()=>Music.on&&Sound.on;
 const Music={
   on:true, playing:false, tempo:126, next:0, step:0, timer:null, gain:null, rate:1,
   // C장조 펜타토닉 기반 8마디 멜로디 (반음 단위, 0=C5), 0=쉼표는 null
@@ -335,7 +331,7 @@ const Music={
   bass:[-24,null,-24,null,-17,null,-17,null,-19,null,-19,null,-15,null,-15,null],
   chords:[[0,4,7],[0,4,7],[5,9,12],[5,9,12],[7,11,14],[7,11,14],[0,4,7],[0,4,7]],
   f(n){ return 523.25*Math.pow(2,n/12); },
-  start(){ if(!Sound.ctx||this.playing||!bgmOn()||AudioFiles.curName) return; this.playing=true; if(!this.gain){ this.gain=Sound.ctx.createGain(); this.gain.gain.value=0.5; this.gain.connect(Sound.ctx.destination); } this.next=Sound.ctx.currentTime+0.1; this.step=0; this.timer=setInterval(()=>this.schedule(),90); },
+  start(){ if(!Sound.ctx||this.playing||!this.on||AudioFiles.curName) return; this.playing=true; if(!this.gain){ this.gain=Sound.ctx.createGain(); this.gain.gain.value=0.5; this.gain.connect(Sound.ctx.destination); } this.next=Sound.ctx.currentTime+0.1; this.step=0; this.timer=setInterval(()=>this.schedule(),90); },
   stop(){ this.playing=false; if(this.timer) clearInterval(this.timer); this.timer=null; },
   note(freq,t,dur,type,vol){ const c=Sound.ctx,o=c.createOscillator(),g=c.createGain(); o.type=type; o.frequency.value=freq; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(this.gain); o.start(t); o.stop(t+dur+0.02); },
   schedule(){
@@ -370,7 +366,7 @@ const AudioFiles={
     for(const n of this.names){ const a=new Audio(`assets/audio/${n}.mp3`); a.preload='auto'; a.addEventListener('canplaythrough',()=>{ this.el[n]=a; },{once:true}); a.addEventListener('error',()=>{},{once:true}); }
     for(const n of ['bgm_menu','bgm_play','bgm_danger']){ const a=new Audio(`assets/audio/${n}.mp3`); a.loop=true; a.volume=0.5; a.preload='auto'; a.addEventListener('canplaythrough',()=>{ this.elBgm[n]=a; if(!this.curEl&&this.wanted===n){ Music.stop(); this.playEl(n); } },{once:true}); }
   },
-  playEl(name){ if(!this.elBgm[name]) return; if(this.curEl===this.elBgm[name]) return; if(this.curEl){ this.curEl.pause(); this.curEl.currentTime=0; } this.curEl=this.elBgm[name]; this.curName=name; this.curEl.volume=bgmOn()?0.5:0; this.curEl.play().catch(()=>{}); },
+  playEl(name){ if(!this.elBgm[name]) return; if(this.curEl===this.elBgm[name]) return; if(this.curEl){ this.curEl.pause(); this.curEl.currentTime=0; } this.curEl=this.elBgm[name]; this.curName=name; this.curEl.volume=Music.on?0.5:0; this.curEl.play().catch(()=>{}); },
   has(n){ return !!this.buf[n]; },
   sfx(n,vol=1,rate=1){ if(this.elMode){ const a=this.el[n]; if(!a||!Sound.on) return false; const c=a.cloneNode(); c.volume=Math.min(1,vol); c.playbackRate=rate; c.play().catch(()=>{}); return true; }
     const b=this.buf[n]; if(!b||!Sound.on) return false; const s=Sound.ctx.createBufferSource(), g=Sound.ctx.createGain(); s.buffer=b; s.playbackRate.value=rate; g.gain.value=vol; s.connect(g); g.connect(Sound.ctx.destination); s.start(); return true; },
@@ -379,7 +375,7 @@ const AudioFiles={
     this.wanted=name; if(this.elMode){ this.playEl(name); return; } if(!this.bgm[name]||!this.gainNode) return; if(this.curName===name) return;
     const c=Sound.ctx, t=c.currentTime;
     if(this.cur){ const old=this.cur, og=this.curGain; og.gain.setValueAtTime(og.gain.value,t); og.gain.linearRampToValueAtTime(0,t+0.6); old.stop(t+0.65); }
-    const s=c.createBufferSource(), g=c.createGain(); s.buffer=this.bgm[name]; s.loop=true; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(bgmOn()?1:0,t+0.6); s.connect(g); g.connect(this.gainNode); s.start(t);
+    const s=c.createBufferSource(), g=c.createGain(); s.buffer=this.bgm[name]; s.loop=true; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(Music.on?1:0,t+0.6); s.connect(g); g.connect(this.gainNode); s.start(t);
     this.cur=s; this.curGain=g; this.curName=name;
   },
   setOn(on){ if(this.elMode){ if(this.curEl) this.curEl.volume=on?0.5:0; return; } if(this.curGain){ const t=Sound.ctx.currentTime; this.curGain.gain.cancelScheduledValues(t); this.curGain.gain.setValueAtTime(this.curGain.gain.value,t); this.curGain.gain.linearRampToValueAtTime(on?1:0,t+0.3); } },
@@ -804,7 +800,7 @@ class Game{
     const me=this.players[0]; let newBest=false;
     if(this.mode==='solo'&&me.score>this.best.solo){ this.best.solo=me.score; newBest=true; }
     if(me.maxChain>this.best.chain) this.best.chain=me.maxChain;
-    this.saveBest(); AudioFiles.setOn(false); setTimeout(()=>{ AudioFiles.play('bgm_menu'); AudioFiles.setOn(bgmOn()); },3200); setTimeout(()=>UI.result(this,newBest),1100);
+    this.saveBest(); AudioFiles.setOn(false); setTimeout(()=>{ AudioFiles.play('bgm_menu'); AudioFiles.setOn(Music.on); },3200); setTimeout(()=>UI.result(this,newBest),1100);
   }
   layout(){
     const n=this.players.length||1, dpr=window.devicePixelRatio||1;
@@ -999,18 +995,14 @@ function applyButtons(){ document.getElementById('touch').classList.toggle('hidd
 applyButtons();
 const btnSpeed=document.getElementById('btnSpeed'); btnSpeed.textContent=game.speed+'×';
 btnSpeed.onclick=()=>{ Sound.init(); Sound.ui(); game.speed=game.speed>=4?1:game.speed*2; btnSpeed.textContent=game.speed+'×'; try{ localStorage.setItem('chamoetok-speed',game.speed); }catch(e){} };
+document.getElementById('btnSound').onclick=e=>{ Sound.on=!Sound.on; e.target.textContent=Sound.on?'🔊':'🔇'; Sound.init(); try{ localStorage.setItem('chamoetok-sfx',Sound.on?'1':'0'); }catch(_){} };
 const btnMusic=document.getElementById('btnMusic');
-const btnSound=document.getElementById('btnSound');
-function syncAudioBtns(){ btnSound.textContent=Sound.on?'🔊':'🔇'; btnSound.classList.toggle('off',!Sound.on); btnMusic.textContent='🎵'; btnMusic.classList.toggle('off',!bgmOn()); btnMusic.style.opacity=''; }
-function applyBgm(){ Sound.init(); AudioFiles.setOn(bgmOn()); if(bgmOn()) Music.start(); else Music.stop(); syncAudioBtns(); }
-btnSound.onclick=()=>{ Sound.on=!Sound.on; try{ localStorage.setItem('chamoetok-sfx',Sound.on?'1':'0'); }catch(_){} applyBgm(); };
-
 try{ Music.on=localStorage.getItem('chamoetok-music')!=='0'; Sound.on=localStorage.getItem('chamoetok-sfx')!=='0'; }catch(_){}
-syncAudioBtns();
-btnMusic.onclick=()=>{ if(!Sound.on){ Sound.on=true; try{ localStorage.setItem('chamoetok-sfx','1'); }catch(_){} Music.on=true; } else Music.on=!Music.on; try{ localStorage.setItem('chamoetok-music',Music.on?'1':'0'); }catch(_){} applyBgm(); };
-
+btnMusic.textContent=Music.on?'🎵':'🎵̸'; document.getElementById('btnSound').textContent=Sound.on?'🔊':'🔇';
+btnMusic.onclick=()=>{ Music.on=!Music.on; btnMusic.style.opacity=Music.on?'1':'.45'; try{ localStorage.setItem('chamoetok-music',Music.on?'1':'0'); }catch(_){} Sound.init(); AudioFiles.setOn(Music.on); if(Music.on) Music.start(); else Music.stop(); };
+btnMusic.style.opacity=Music.on?'1':'.45'; btnMusic.textContent='🎵';
 // 첫 사용자 입력 시 오디오 시작 (브라우저 정책)
-const kick=()=>{ Sound.init(); Voice.load(); AudioFiles.load().then(()=>{ if(bgmOn()&&!AudioFiles.curName) Music.start(); }); }; document.addEventListener('pointerdown',kick,{once:true}); document.addEventListener('keydown',kick,{once:true});
+const kick=()=>{ Sound.init(); Voice.load(); AudioFiles.load().then(()=>{ if(Music.on&&!AudioFiles.curName) Music.start(); }); }; document.addEventListener('pointerdown',kick,{once:true}); document.addEventListener('keydown',kick,{once:true});
 document.getElementById('btnPause').onclick=()=>{ Sound.init(); if(game.paused){ game.paused=false; UI.hide(); } else if(game.running) UI.pause(game); else UI.menu(game); };
 // 길게 누를 때 뜨는 컨텍스트 메뉴(이미지 저장/텍스트 선택 창) 차단 — 모바일 오작동 방지
 document.addEventListener('contextmenu',e=>{ e.preventDefault(); return false; },{capture:true});
@@ -1021,7 +1013,7 @@ window.addEventListener('popstate',()=>{
   // 폰 뒤로가기: 게임 중이면 앱 종료 대신 일시정지, 메뉴에서는 그대로 종료
   if(game.running&&!game.finished){ try{ history.pushState({game:1},''); }catch(e){} if(!game.paused) UI.pause(game); }
 });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(game.running&&!game.finished) UI.pause(game); AudioFiles.setOn(false); if(Sound.ctx) Sound.ctx.suspend(); } else { if(Sound.ctx) Sound.ctx.resume(); AudioFiles.setOn(bgmOn()); if(game.running&&!game.finished) WakeLock.on(); } });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(game.running&&!game.finished) UI.pause(game); AudioFiles.setOn(false); if(Sound.ctx) Sound.ctx.suspend(); } else { if(Sound.ctx) Sound.ctx.resume(); AudioFiles.setOn(Music.on); if(game.running&&!game.finished) WakeLock.on(); } });
 window.addEventListener('resize',()=>{ drawBackground(); FX.resize(); Bubbles.resize(); if(game.players.length) game.layout(); });
 
 drawBackground(); FX.resize(); Bubbles.resize();
